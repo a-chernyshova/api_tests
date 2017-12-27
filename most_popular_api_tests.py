@@ -115,9 +115,10 @@ def filter_out_mp(api_url, api_domain):
             print('Incorrect slugs: ', incorrect_list)
 
 
-def get_list_of_most_recent_stories(api_domain, story_type):
+def get_list_of_most_recent_stories(api_domain, story_type, header_key):
     params = {'page': 1, 'sort': 'date', 'per_page': 12, 'type': story_type}
-    response = requests.get(api_domain + 'search', params=params)
+    headers = {'x-api-key': header_key}
+    response = requests.get(api_domain + 'search', params=params, headers=headers)
     content = response.json()
     articles = content['articles']
     article_slugs = []
@@ -146,10 +147,12 @@ if __name__ == '__main__':
     API_MP = TEST_DATA['API_MP']
     API_DOMAIN = TEST_DATA['API_DOMAIN']
     DOMAIN = TEST_DATA['DOMAIN']
+    HEADER_KEY = TEST_DATA['X_API_KEY']
+
     if requests.head(API_STATUS).status_code == 200:
 
-        update_most_popular(DOMAIN, get_list_of_most_recent_stories(API_DOMAIN, 'article'))
-        update_most_popular(DOMAIN, get_list_of_most_recent_stories(API_DOMAIN, 'cheat'))
+        update_most_popular(DOMAIN, get_list_of_most_recent_stories(API_DOMAIN, 'article', HEADER_KEY))
+        update_most_popular(DOMAIN, get_list_of_most_recent_stories(API_DOMAIN, 'cheat', HEADER_KEY))
 
     # TODO: rework put_new_article_in_mp with arg* to put 1-N articles in one time
         put_new_article_in_mp(DOMAIN, retrieve_top_story_from_api(API_DOMAIN)[0])
