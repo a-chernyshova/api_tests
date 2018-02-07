@@ -1,28 +1,36 @@
 import requests
 from selenium import webdriver
 import json
+import logging
+
+logging.basicConfig(filename="log.txt", level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+#logging.disable(logging.INFO)
 
 
 def load_config(filename):
+    logging.info('Open config')
     file = open(filename, 'r+')
     file.readline()
     test_data = {}
     for line in file:
         key, value = line.split(' = ')
+        logging.debug('Read lines from file and build dict' + key + ':' + value)
         test_data[key] = value[:-1]
     file.close()
     return test_data
 
 
 def update_most_popular(domain, link_list):
+    logging.info('Call articles to update MP list')
     for link in link_list:
         for i in range(1, 10):
             try:
                 r = requests.head(domain + link)
+                logging.info('Calling' + link)
                 if r.status_code != 200:
-                    print(link, 'returns ', r.status_code)
+                    logging.debug(link + ' responds with ' + r.status_code)
             except requests.ConnectionError:
-                print(link, "failed to connect", r.status_code)
+                logging.critical(link + ' unreachable ' + r.status_code)
     print('INFO: most popular - is updated')
 
 
@@ -30,10 +38,11 @@ def put_new_article_in_mp(domain, url):
     for i in range(1, 50):
         try:
             r = requests.head(domain + url)
+            logging.info('Call ' + url)
             if r.status_code != 200:
-                print('returns ', r.status_code)
+                logging.debug(url + ' returns ' + r.status_code)
         except requests.ConnectionError:
-            print("failed to connect")
+            logging.critical(url + ' unreachable')
     print('INFO: added new article in mp')
 
 
@@ -49,35 +58,38 @@ def find_top_box_story1():
 
 
 def retrieve_top_story_from_api(api_domain):
+    logging.info('Start retrieving top stories')
     response = requests.get(api_domain + 'homepage').json()
     topstories = []
     for n in range(4):
         topstories.append(response['articles'][n]['slug'])
-
+        logging.info('Added ' + str(n) + ' as top story')
     return topstories
 
 
 def find_sponsored(api_domain):
-
+    logging.info('Start sorting out of sponsored article')
     for i in range(1, 20):
         params = {'page': i, 'sort': 'date', 'per_page': 12, 'type': 'article'}
         response = requests.get(api_domain + 'search', params=params).json()['articles']
 
         for article in response:
             if article['Metadata']['sponsored']:
+                logging.debug('Sponsored article is found ' + article['slug'] )
                 return article['slug']
 
 
 def check_mp_list_len(mp_list):
     if len(mp_list) < 5:
-        print('Error: API should return list of 5 articles')
+        logging.critical('Incorrect MP list lenght ' + len(mp_list) + '. Expect: 5')
     print('INFO: checked mp list length')
 
 
 def get_mp_list(api_mp):
-    response = requests.get(API_MP).json()
+    response = requests.get(api_mp).json()
     mp_list = []
     for article in response:
+        logging.debug('Add article ' + article['slug'] + ' in MP list')
         mp_list.append(article['slug'])
     print('INFO: most popular list is retrieved')
     return mp_list
@@ -96,21 +108,28 @@ def filter_out_mp(api_url, api_domain):
     for article in response:
         if article['type'] != 'article':
             incorrect_list.append(article['slug' + ' - not article'])
+            logging.critical('List contains not article type story')
         elif article['Metadata']['sponsored'] == True or article['Metadata']['branded'] == True:
             incorrect_list.append(article['slug'] + ' - sponsored')
+            logging.critical('List contains sponsored story')
         # check if top story 1 is in mp list
         elif article['canonical_slug'] == retrieve_top_story_from_api(api_domain)[0]:
             incorrect_list.append(article['canonical_slug'] + ' - is top story')
+            logging.critical('List contains top story')
         elif article['canonical_slug'] in mp_list:
             incorrect_list.append(article['canonical_slug'] + ' - duplicated')
+            logging.critical('List contains duplicated stories')
         else:
             mp_list.append(article['canonical_slug'])
+            logging.debug('Added story to MP list')
 
     if not incorrect_list and len(mp_list) > 5:
-        print('MP list is correct')
+        logging.debug('Correct MP list')
+        
     else:
         if len(mp_list) < 5:
             print('MP list is not correct. Only ', len(mp_list), ' articles in list.')
+            logging.warning('Incorrect lenght of MP list')
         else:
             print('Incorrect slugs: ', incorrect_list)
 
@@ -123,6 +142,7 @@ def get_list_of_most_recent_stories(api_domain, story_type, header_key):
     articles = content['articles']
     article_slugs = []
     for article in articles:
+        logging.debug('Added one of most recent stories in MP list')
         article_slugs.append(article['slug'])
 
     return article_slugs
@@ -142,7 +162,7 @@ def get_list_of_sponsored(endpoint):
 
 
 if __name__ == '__main__':
-    TEST_DATA = load_config('api_tests/api_config.txt')
+    TEST_DATA = load_config('api_config.txt')
     API_STATUS = TEST_DATA['API_STATUS']
     API_MP = TEST_DATA['API_MP']
     API_DOMAIN = TEST_DATA['API_DOMAIN']
