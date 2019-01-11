@@ -3,8 +3,6 @@ from api_tests import most_popular_api_tests
 
 
 # call each endpoints loaded from file, check if it returns not 200 and not empty json
-
-
 def check_status_code_and_response(domain, endpoints):
     for endpoint in endpoints:
         try:
@@ -21,7 +19,6 @@ def load_test_data(filename):
     test_data = most_popular_api_tests.load_config(filename)
     domain, end_points, search = test_data['DOMAIN'], test_data['END_POINTS'], test_data['API_SEARCH']
     end_points = end_points[1:-1].split(', ')
-
     return domain, end_points, search
 
 
